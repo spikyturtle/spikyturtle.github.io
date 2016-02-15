@@ -1,0 +1,8 @@
+excerpt_separator: ""
+pygments: true
+markdown: kramdown
+url: http://spikyturtle.github.io
+title: Pile of Game
+tagline: A log of everyday life
+description: News and articles related to Pile of Game
+paginate: 5
