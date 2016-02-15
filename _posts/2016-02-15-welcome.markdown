@@ -1,0 +1,8 @@
+---
+published: false
+title: Welcome
+layout: post
+---
+[Pile of Game](https://pileofgame.com) is a web application aimed at video game collectors. It's a place to record, browse and organise your game collection.
+
+This blog will probably contain both product news and technical articles about how the app is made. 
