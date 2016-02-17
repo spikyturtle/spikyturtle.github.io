@@ -1,0 +1,54 @@
+---
+published: false
+title: MySQL and Case Sensitivity
+layout: post
+---
+- Built a database on Mac OS
+- Happened to adopt a camelCase naming convention
+- Eventually configured Visual Studio on a Windows PC, for MySQL Debugging
+- Ran into the issue that, while Mac OS is case insensitive, it does preserve case. So the data file names were all camelCase. The Windows debugger would not step into code on the Mac OS database server
+- Found the [lower_case_table_names](http://dev.mysql.com/doc/refman/5.7/en/identifier-case-sensitivity.html) setting for MySQL. Switched to 1 and restarted the server
+- Debugger works!
+
+* A month later *
+
+- Back working on Mac OS. Rebooted the server once or twice since changing the aforementioned setting.
+- A stored procedure which inserts data into a couple of tables no longer works. Strange, since this functionality hasn't been touched for quite a while.
+- Begin unit testing this feature. The stored procedure fails _every_ time:
+`Cannot add or update a child row: a foreign key constraint fails`
+
+* 3 hours later *
+
+- Dropped the offending FK and rebuilt it. 
+- Now everything works, go do something else
+
+* 6 hours later * 
+- Somehow put the two issues together. Did changing the lower case setting somehow break the FK?
+- After further research, found this command:
+`SHOW ENGINE INNODB STATUS;`, the output of which includes 
+
+    ------------------------
+    LATEST FOREIGN KEY ERROR
+    ------------------------
+    2016-02-17 11:31:05 700000a3f000 Transaction:
+    TRANSACTION 3305126, ACTIVE 0 sec inserting
+    mysql tables in use 1, locked 1
+    1 lock struct(s), heap size 360, 0 row lock(s), undo log entries 1
+    MySQL thread id 3292, OS thread handle 0x700000a3f000, query id 502533 localhost 127.0.0.1 pg update
+    INSERT INTO hardwarePhysicalAttributes(userHardwareListId, factorySealed, console, consoleRating, box, boxRating, docs, docsRating, accessories, accessoriesRating)
+    VALUES(80, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    Foreign key constraint fails for table `pg`.`hardwarephysicalattributes`:
+    
+      CONSTRAINT `fk_hpa_uhl` FOREIGN KEY (`userHardwareListId`) REFERENCES `userHardwareList` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+    Trying to add to index `FK_UHL_PhysicalAttributes_idx` tuple:
+    DATA TUPLE: 2 fields;
+     0: len 4; hex 00000050; asc    P;;
+     1: len 4; hex 00000039; asc    9;;
+
+    But the parent table `pg`.`userHardwareList`
+    or its .ibd file does not currently exist!
+
+
+So, either the parent table doesn't exist (it does - we just inserted a row) or it's .ibd file does not exist. 
+- Take a look in the MySQL Data Directory and find the ibd file does exist, however it's now in lowercase, while the table file is still in camelCase.
+- Theory: Before dropping the FK, all the .ibd files would have been camelCase. Perhaps there's an obscure bug in MySQL which prevents FK checks from working when the ibd file is created with lower_case_table_names = 0, but later changed to 1?
